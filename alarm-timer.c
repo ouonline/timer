@@ -5,7 +5,7 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#include "../memorypool/mm.h"
+#include "../mm/mm.h"
 #include "../kernel-utils/list.h"
 
 struct alarm_timer {

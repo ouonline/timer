@@ -3,7 +3,7 @@
 #include <pthread.h>
 #include <unistd.h>
 
-#include "../memorypool/mm.h"
+#include "../mm/mm.h"
 #include "../kernel-utils/list.h"
 
 struct pthread_timer {
