@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <unistd.h>
 
+#include "../memorypool/mm.h"
 #include "../kernel-utils/list.h"
 
 struct pthread_timer {
@@ -26,7 +27,7 @@ static inline void do_pthread_timer_del(struct pthread_timer* t)
     if (t->dtor)
         t->dtor(t->arg);
 
-    free(t);
+    mm_free(t);
 }
 
 static void* pthread_timer_func(void* nil)
@@ -87,7 +88,7 @@ static inline int pthread_timer_add(int delay, int interval, int (*f)(void*),
     if (delay < 0)
         delay = 0;
 
-    t = malloc(sizeof(struct pthread_timer));
+    t = mm_alloc(sizeof(struct pthread_timer));
     if (!t)
         return -1;
 

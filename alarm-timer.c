@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <sys/time.h>
 
+#include "../memorypool/mm.h"
 #include "../kernel-utils/list.h"
 
 struct alarm_timer {
@@ -49,7 +50,7 @@ static inline void do_alarm_timer_del(struct alarm_timer* t)
     if (t->dtor)
         t->dtor(t->arg);
 
-    free(t);
+    mm_free(t);
 }
 
 static inline void alarm_timer_action(void)
@@ -131,7 +132,7 @@ static inline int alarm_timer_add(int delay, int interval, int (*f)(void*),
     if (delay < 0)
         delay = 0;
 
-    t = malloc(sizeof(struct alarm_timer));
+    t = mm_alloc(sizeof(struct alarm_timer));
     if (!t)
         return -1;
 
