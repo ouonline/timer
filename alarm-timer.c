@@ -7,19 +7,21 @@
 
 #include "../mm/mm.h"
 #include "../kernel-utils/list.h"
+#include "../threadpool/threadpool.h"
 
 struct alarm_timer {
-    int interval, remain;
     struct list_node node;
+    int interval, remain;
     void* arg;
-    int (*func)(void*);
+    void (*func)(void*);
     void (*dtor)(void*);
 };
 
 /*---------------------------------------------------------------------------*/
 
-static struct list_node timer_list;
-static pthread_mutex_t h_lock;
+static struct list_node g_timer_list;
+static pthread_mutex_t g_list_lock;
+static struct thread_pool* g_thread_pool;
 
 static inline void alarm_timer_start(void)
 {
@@ -57,21 +59,18 @@ static inline void alarm_timer_action(void)
 {
     struct list_node *p, *n;
 
-    pthread_mutex_lock(&h_lock);
-    list_for_each_safe (p, n, &timer_list) {
+    pthread_mutex_lock(&g_list_lock);
+    list_for_each_safe (p, n, &g_timer_list) {
         struct alarm_timer* t = list_entry(p, struct alarm_timer, node);
 
         if (t->remain > 0)
             --t->remain;
         else {
-            register int err = t->func(t->arg);
-            if (err)
-                do_alarm_timer_del(t);
-            else
-                t->remain = t->interval - 1;
+            thread_pool_add_task(g_thread_pool, t->arg, t->func);
+            t->remain = t->interval - 1;
         }
     }
-    pthread_mutex_unlock(&h_lock);
+    pthread_mutex_unlock(&g_list_lock);
 }
 
 static void sigalrm_action(int sig, siginfo_t* s, void* nil)
@@ -100,29 +99,39 @@ static inline int alarm_timer_init(void)
 {
     int err;
 
-    list_init(&timer_list);
-    pthread_mutex_init(&h_lock, NULL);
+    list_init(&g_timer_list);
+    pthread_mutex_init(&g_list_lock, NULL);
 
     err = install_alarm_handler();
-    if (!err)
-        alarm_timer_start();
+    if (!err) {
+        g_thread_pool = thread_pool_init(0);
+        if (g_thread_pool)
+            alarm_timer_start();
+        else
+            err = -1;
+    }
 
     return err;
 }
 
-static inline void alarm_timer_exit(void)
+static inline void alarm_timer_destroy(void)
 {
     struct list_node *p, *n;
 
     alarm_timer_stop();
-    pthread_mutex_destroy(&h_lock);
+    pthread_mutex_destroy(&g_list_lock);
 
-    list_for_each_safe (p, n, &timer_list)
+    list_for_each_safe (p, n, &g_timer_list)
         do_alarm_timer_del(list_entry(p, struct alarm_timer, node));
+
+    if (g_thread_pool) {
+        thread_pool_destroy(g_thread_pool);
+        g_thread_pool = NULL;
+    }
 }
 
-static inline int alarm_timer_add(int delay, int interval, int (*f)(void*),
-                                  void (*d)(void*), void* arg)
+static inline int alarm_timer_add(int delay, int interval, void* arg,
+                                  void (*f)(void*), void (*d)(void*))
 {
     struct alarm_timer* t;
 
@@ -142,18 +151,18 @@ static inline int alarm_timer_add(int delay, int interval, int (*f)(void*),
     t->dtor = d;
     t->arg = arg;
 
-    pthread_mutex_lock(&h_lock);
-    list_add_prev(&t->node, &timer_list);
-    pthread_mutex_unlock(&h_lock);
+    pthread_mutex_lock(&g_list_lock);
+    list_add_prev(&t->node, &g_timer_list);
+    pthread_mutex_unlock(&g_list_lock);
 
     return 0;
 }
 
-static inline void __alarm_timer_del(int (*f)(void*), void* arg)
+static inline void __alarm_timer_del(void* arg, void (*f)(void*))
 {
     struct list_node *p, *n;
 
-    list_for_each_safe (p, n, &timer_list) {
+    list_for_each_safe (p, n, &g_timer_list) {
         struct alarm_timer* t = list_entry(p, struct alarm_timer, node);
 
         if (t->func == f && t->arg == arg) {
@@ -163,11 +172,11 @@ static inline void __alarm_timer_del(int (*f)(void*), void* arg)
     }
 }
 
-static inline void alarm_timer_del(int (*f)(void*), void* arg)
+static inline void alarm_timer_del(void* arg, void (*f)(void*))
 {
-    pthread_mutex_lock(&h_lock);
-    __alarm_timer_del(f, arg);
-    pthread_mutex_unlock(&h_lock);
+    pthread_mutex_lock(&g_list_lock);
+    __alarm_timer_del(arg, f);
+    pthread_mutex_unlock(&g_list_lock);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -177,18 +186,18 @@ int timer_init(void)
     return alarm_timer_init();
 }
 
-void timer_exit(void)
+void timer_destroy(void)
 {
-    alarm_timer_exit();
+    alarm_timer_destroy();
 }
 
-int timer_add(int delay, int interval, int (*f)(void*),
-              void (*d)(void*), void* arg)
+int timer_add(int delay, int interval, void* arg,
+              void (*f)(void*), void (*d)(void*))
 {
-    return alarm_timer_add(delay, interval, f, d, arg);
+    return alarm_timer_add(delay, interval, arg, f, d);
 }
 
-void timer_del(int (*f)(void*), void* arg)
+void timer_del(void* arg, void (*f)(void*))
 {
-    alarm_timer_del(f, arg);
+    alarm_timer_del(arg, f);
 }
