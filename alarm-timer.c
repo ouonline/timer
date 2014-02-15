@@ -7,7 +7,7 @@
 
 #include "../mm/mm.h"
 #include "../kernel-utils/list.h"
-#include "../threadpool/threadpool.h"
+#include "../threadpool/c/threadpool.h"
 
 struct alarm_timer {
     struct list_node node;
@@ -57,10 +57,10 @@ static inline void do_alarm_timer_del(struct alarm_timer* t)
 
 static inline void alarm_timer_action(void)
 {
-    struct list_node *p, *n;
+    struct list_node* p;
 
     pthread_mutex_lock(&g_list_lock);
-    list_for_each_safe (p, n, &g_timer_list) {
+    list_for_each (p, &g_timer_list) {
         struct alarm_timer* t = list_entry(p, struct alarm_timer, node);
 
         if (t->remain > 0)
@@ -124,10 +124,8 @@ static inline void alarm_timer_destroy(void)
     list_for_each_safe (p, n, &g_timer_list)
         do_alarm_timer_del(list_entry(p, struct alarm_timer, node));
 
-    if (g_thread_pool) {
+    if (g_thread_pool)
         thread_pool_destroy(g_thread_pool);
-        g_thread_pool = NULL;
-    }
 }
 
 static inline int alarm_timer_add(int delay, int interval, void* arg,

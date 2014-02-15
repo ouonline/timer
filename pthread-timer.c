@@ -5,7 +5,7 @@
 
 #include "../mm/mm.h"
 #include "../kernel-utils/list.h"
-#include "../threadpool/threadpool.h"
+#include "../threadpool/c/threadpool.h"
 
 struct pthread_timer {
     struct list_node node;
@@ -35,12 +35,11 @@ static inline void do_pthread_timer_del(struct pthread_timer* t)
 static void* pthread_timer_func(void* nil)
 {
     while (1) {
-        struct list_node *p, *n;
+        struct list_node* p;
 
         pthread_mutex_lock(&g_list_lock);
-        list_for_each_safe (p, n, &g_timer_list) {
+        list_for_each (p, &g_timer_list) {
             struct pthread_timer* t = list_entry(p, struct pthread_timer, node);
-
             if (t->remain > 0)
                 --t->remain;
             else {
@@ -86,10 +85,8 @@ static inline void pthread_timer_destroy(void)
     list_for_each_safe (p, n, &g_timer_list)
         do_pthread_timer_del(list_entry(p, struct pthread_timer, node));
 
-    if (g_thread_pool) {
+    if (g_thread_pool)
         thread_pool_destroy(g_thread_pool);
-        g_thread_pool = NULL;
-    }
 }
 
 static inline int pthread_timer_add(int delay, int interval, void* arg,
