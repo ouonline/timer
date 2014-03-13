@@ -1,19 +1,27 @@
 CC := gcc
-CFLAGS := -O2 -Wall -Werror
+
+ifeq ($(release), y)
+    CFLAGS := -O2 -DNDEBUG
+else
+    CFLAGS := -g
+endif
+
+CFLAGS := $(CFLAGS) -Wall -Werror
 
 LIBS := -lpthread
 
 OBJS := $(patsubst %c, %o, $(wildcard *.c) ../threadpool/c/threadpool.c)
-TARGET := alarm-timer-test pthread-timer-test
+
+TARGET := test_alarm_timer test_pthread_timer
 
 .PHONY: all clean
 
 all: $(OBJS) $(TARGET)
 
-alarm-timer-test: test-timer.o alarm-timer.o ../threadpool/c/threadpool.o
+test_alarm_timer: test_timer.o alarm_timer.o ../threadpool/c/threadpool.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
-pthread-timer-test: test-timer.o pthread-timer.o ../threadpool/c/threadpool.o
+test_pthread_timer: test_timer.o pthread_timer.o ../threadpool/c/threadpool.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
 .c.o:
