@@ -20,7 +20,7 @@ struct pthread_timer {
 static struct list_node g_timer_list;
 static pthread_mutex_t g_list_lock;
 static pthread_t g_timer_thread;
-static struct thread_pool* g_thread_pool;
+static struct threadpool* g_threadpool;
 
 static inline void do_pthread_timer_del(struct pthread_timer* t)
 {
@@ -43,7 +43,7 @@ static void* pthread_timer_func(void* nil)
             if (t->remain > 0)
                 --t->remain;
             else {
-                thread_pool_add_task(g_thread_pool, t->arg, t->func);
+                threadpool_add_task(g_threadpool, t->arg, t->func);
                 t->remain = t->interval - 1;
             }
         }
@@ -62,12 +62,12 @@ static inline int pthread_timer_init(void)
     list_init(&g_timer_list);
     pthread_mutex_init(&g_list_lock, NULL);
 
-    g_thread_pool = thread_pool_init(0);
-    if (g_thread_pool) {
+    g_threadpool = threadpool_init(0);
+    if (g_threadpool) {
         err = pthread_create(&g_timer_thread, NULL, pthread_timer_func, NULL);
         if (err) {
-            thread_pool_destroy(g_thread_pool);
-            g_thread_pool = NULL;
+            threadpool_destroy(g_threadpool);
+            g_threadpool = NULL;
         }
     }
 
@@ -85,8 +85,8 @@ static inline void pthread_timer_destroy(void)
     list_for_each_safe (p, n, &g_timer_list)
         do_pthread_timer_del(list_entry(p, struct pthread_timer, node));
 
-    if (g_thread_pool)
-        thread_pool_destroy(g_thread_pool);
+    if (g_threadpool)
+        threadpool_destroy(g_threadpool);
 }
 
 static inline int pthread_timer_add(int delay, int interval, void* arg,
