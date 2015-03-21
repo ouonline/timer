@@ -6,7 +6,7 @@
 #include <sys/time.h>
 
 #include "../kernel-utils/list.h"
-#include "../threadpool/c/threadpool.h"
+#include "../mythreadpool/c/threadpool.h"
 
 struct alarm_timer {
     struct list_node node;
@@ -65,7 +65,7 @@ static inline void alarm_timer_action(void)
         if (t->remain > 0)
             --t->remain;
         else {
-            threadpool_add_task(g_threadpool, t->arg, t->func);
+            threadpool_add_task(g_threadpool, t->arg, t->func, NULL);
             t->remain = t->interval - 1;
         }
     }
@@ -87,7 +87,7 @@ static int install_alarm_handler(void)
     handler.sa_sigaction = sigalrm_action;
 
     if (sigaction(SIGALRM, &handler, NULL) != 0) {
-        perror("sigaction");     
+        perror("sigaction");
         return -1;
     }
 

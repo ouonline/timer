@@ -4,7 +4,7 @@
 #include <unistd.h>
 
 #include "../kernel-utils/list.h"
-#include "../threadpool/c/threadpool.h"
+#include "../mythreadpool/c/threadpool.h"
 
 struct pthread_timer {
     struct list_node node;
@@ -42,7 +42,7 @@ static void* pthread_timer_func(void* nil)
             if (t->remain > 0)
                 --t->remain;
             else {
-                threadpool_add_task(g_threadpool, t->arg, t->func);
+                threadpool_add_task(g_threadpool, t->arg, t->func, NULL);
                 t->remain = t->interval - 1;
             }
         }
