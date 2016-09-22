@@ -8,6 +8,7 @@ endif
 
 CFLAGS := $(CFLAGS) -Wall -Werror
 
+INCLUDE := -I../utils -I../threadpool/c
 LIBS := -lpthread
 
 OBJS := $(patsubst %c, %o, $(wildcard *.c) ../mythreadpool/c/threadpool.c)
@@ -25,7 +26,7 @@ test_pthread_timer: test_timer.o pthread_timer.o ../mythreadpool/c/threadpool.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
 .c.o:
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(INCLUDE) -c $< -o $@
 
 clean:
 	rm -f $(TARGET) $(OBJS)

@@ -5,8 +5,8 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#include "../kernel-utils/list.h"
-#include "../mythreadpool/c/threadpool.h"
+#include "list.h"
+#include "threadpool.h"
 
 struct alarm_timer {
     struct list_node node;
