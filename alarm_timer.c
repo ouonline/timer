@@ -20,7 +20,7 @@ struct alarm_timer {
 
 static struct list_node g_timer_list;
 static pthread_mutex_t g_list_lock;
-static struct threadpool* g_threadpool;
+static struct threadpool g_threadpool;
 
 static inline void alarm_timer_start(void)
 {
@@ -65,7 +65,7 @@ static inline void alarm_timer_action(void)
         if (t->remain > 0)
             --t->remain;
         else {
-            threadpool_add_task(g_threadpool, t->arg, t->func, NULL);
+            threadpool_add_task(&g_threadpool, t->arg, t->func, NULL);
             t->remain = t->interval - 1;
         }
     }
@@ -103,8 +103,7 @@ static inline int alarm_timer_init(void)
 
     err = install_alarm_handler();
     if (!err) {
-        g_threadpool = threadpool_init(0);
-        if (g_threadpool)
+        if (threadpool_init(&g_threadpool, 0) == 0)
             alarm_timer_start();
         else
             err = -1;
@@ -123,8 +122,7 @@ static inline void alarm_timer_destroy(void)
     list_for_each_safe (p, n, &g_timer_list)
         do_alarm_timer_del(list_entry(p, struct alarm_timer, node));
 
-    if (g_threadpool)
-        threadpool_destroy(g_threadpool);
+    threadpool_destroy(&g_threadpool);
 }
 
 static inline int alarm_timer_add(int delay, int interval, void* arg,
