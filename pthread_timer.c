@@ -3,8 +3,8 @@
 #include <pthread.h>
 #include <unistd.h>
 
-#include "list.h"
-#include "threadpool.h"
+#include "utils/list.h"
+#include "threadpool/c/threadpool.h"
 
 struct pthread_timer {
     struct list_node node;
