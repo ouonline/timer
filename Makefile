@@ -8,25 +8,39 @@ endif
 
 CFLAGS := $(CFLAGS) -Wall -Werror
 
-INCLUDE := -I.
-LIBS := -lpthread
+ifndef DEPSDIR
+    DEPSDIR := $(shell pwd)/..
+endif
 
-OBJS := $(patsubst %c, %o, $(wildcard *.c) threadpool/c/threadpool.c)
+INCLUDE := -I. -I$(DEPSDIR)
+LIBS := $(DEPSDIR)/threadpool/c/libthreadpool.a -lpthread
+
+OBJS := $(patsubst %c, %o, $(wildcard *.c))
 
 TARGET := test_alarm_timer test_pthread_timer
 
-.PHONY: all clean
+.PHONY: all clean pre-process post-clean
 
-all: $(OBJS) $(TARGET)
+all: $(TARGET)
 
-test_alarm_timer: test_timer.o alarm_timer.o threadpool/c/threadpool.o
+$(OBJS): | pre-process
+
+pre-process:
+	d=$(DEPSDIR)/utils; if ! [ -d $$d ]; then git clone https://github.com/ouonline/utils.git $$d; fi
+	d=$(DEPSDIR)/threadpool; if ! [ -d $$d ]; then git clone https://github.com/ouonline/threadpool.git $$d; fi
+	$(MAKE) DEPSDIR=$(DEPSDIR) -C $(DEPSDIR)/threadpool/c
+
+post-clean:
+	$(MAKE) clean DEPSDIR=$(DEPSDIR) -C $(DEPSDIR)/threadpool/c
+
+test_alarm_timer: test_timer.o alarm_timer.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
-test_pthread_timer: test_timer.o pthread_timer.o threadpool/c/threadpool.o
+test_pthread_timer: test_timer.o pthread_timer.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
 .c.o:
 	$(CC) $(CFLAGS) $(INCLUDE) -c $< -o $@
 
-clean:
+clean: | post-clean
 	rm -f $(TARGET) $(OBJS)
